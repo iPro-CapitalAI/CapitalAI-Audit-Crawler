@@ -225,8 +225,11 @@ code {{
 /* Shell */
 .shell {{ display: flex; min-height: 100vh; max-width: 1280px; margin: 0 auto; box-shadow: 0 0 0 1px {BORDER}; }}
 
-/* Sidebar (now clickable) */
+/* Sidebar */
 .sidebar {{ width: 210px; flex-shrink: 0; background: {SIDEBAR}; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; }}
+.nav-item {{ display: flex; align-items: center; gap: 9px; padding: 8px 16px; font-size: 13px; font-weight: 500; color: #8FA3B8; text-decoration: none; transition: background .15s, color .15s; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; cursor: pointer; }}
+.nav-item:hover {{ background: rgba(255,255,255,.06); color: #D0DCE8; }}
+.nav-item.active {{ background: rgba(59,130,246,.18); color: #fff; font-weight: 600; border-left: 2px solid #3B82F6; padding-left: 14px; }}
 
 /* Main + generous but tight spacing */
 .main {{ flex: 1; min-width: 0; display: flex; flex-direction: column; background: #F8F9FA; }}
@@ -234,15 +237,28 @@ code {{
 .pc {{ padding: 24px 28px; flex: 1; }}
 
 /* Premium blocked cards — thinner borders + deeper shadow + minimal margins */
-.card, .stat {{
+/* Premium blocked cards */
+.card {{
   background: {CARD};
-  border: 1px solid #111827;               /* ← thinner black outline */
+  border: 1px solid #111827;
   border-radius: 14px;
   overflow: hidden;
-  margin-bottom: 12px;                     /* ← blocks now feel touching */
+  margin-bottom: 12px;
   box-shadow: 0 10px 28px -6px rgba(0,0,0,0.15);
   animation: fadeSlideUp 0.7s ease forwards;
   padding: 24px;
+}}
+
+/* Stat cards — 4-column row in executive summary */
+.stats {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }}
+.stat {{
+  background: {CARD};
+  border: 1px solid #111827;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 10px 28px -6px rgba(0,0,0,0.15);
+  padding: 20px 22px;
+  margin-bottom: 0;
 }}
 
 /* Section-specific soft tints (WCAG contrast safe) */
@@ -253,7 +269,7 @@ code {{
 .plan-card      {{ background: hsl(0, 84%, 97%); }}      /* soft red */
 
 /* Hover + animation */
-.card:hover, .stat:hover {{
+.card:hover {{
   transform: translateY(-4px) scale(1.015);
   box-shadow: 0 20px 40px -10px rgba(0,0,0,0.22);
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
