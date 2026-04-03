@@ -29,8 +29,10 @@ from flask import (Flask, render_template_string, request, redirect,
                    url_for, session, Response, jsonify, send_file)
 
 # ── Config ────────────────────────────────────────────────────────────────────
-PASSWORD      = "capitalai2026"          # change this anytime
-SECRET_KEY    = "cap-ai-secret-2026"     # Flask session key
+from dotenv import load_dotenv
+load_dotenv()
+PASSWORD      = os.getenv("CAPITALAI_PASSWORD", "capitalai2026")
+SECRET_KEY    = os.getenv("FLASK_SECRET_KEY", "cap-ai-secret-2026")
 REPORTS_DIR   = Path(__file__).parent / "capitalai" / "output" / "reports"
 RUN_AUDIT_PY  = Path(__file__).parent / "capitalai" / "run_audit.py"
 DB_PATH       = Path(__file__).parent / "capitalai_audits.db"
