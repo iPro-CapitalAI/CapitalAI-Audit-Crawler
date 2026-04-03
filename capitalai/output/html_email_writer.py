@@ -1,12 +1,12 @@
 # capitalai/output/html_email_writer.py
-# FULL FIXED VERSION — Gearbelt/Sitemate dashboard style
+# FULL FIXED VERSION &#8212; Gearbelt/Sitemate dashboard style
 # Safe len() handling everywhere. No more "object of type 'int' has no len()" error.
 
 from datetime import datetime
 from pathlib import Path
 import re as _re
 
-# ── Palette — Sitemate/Gearbelt exact ──────────────────────────────────────────────────
+# ── Palette &#8212; Sitemate/Gearbelt exact ──────────────────────────────────────────────────
 SIDEBAR      = "#1C2333"     # exact Sitemate sidebar bg
 SIDEBAR2     = "#253047"     # hover surface
 SIDEBAR_ACT  = "#1E6CF0"     # exact Sitemate active blue
@@ -172,7 +172,8 @@ def _table(headers, rows, widths=None):
         cells = "".join(f'<td style="padding:11px 14px;font-size:13px;color:{INK2};border-bottom:1px solid {BORDER};line-height:1.5;vertical-align:top;font-family:{F};">{c}</td>' for c in row)
         tr_html += f'<tr style="background:{bg};">{cells}</tr>'
     head = f"<thead><tr>{th}</tr></thead>" if headers else ""
-    return (f'<table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;font-family:{F};">{col_html}{head}<tbody>{tr_html}</tbody></table>')
+    table = f'<table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;font-family:{F};">{col_html}{head}<tbody>{tr_html}</tbody></table>'
+    return f'<div class="table-wrap">{table}</div>'
 
 def _check_row(text, detail, done=False, colour=BORDER2):
     icon_col = GREEN if done else colour
@@ -184,14 +185,22 @@ def _check_row(text, detail, done=False, colour=BORDER2):
             f'<div style="font-size:12px;color:{MUTED};line-height:1.5;font-family:{F};">{detail}</div></td></tr>')
 
 # ── SVG Icons ─────────────────────────────────────────────────────────────────
-I_GRID  = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>'
-I_STAR  = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>'
-I_SRCH  = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>'
-I_STACK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>'
-I_CHECK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>'
-I_INFO  = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>'
-I_USERS = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>'
-I_TREND = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>'
+# ── Section heading icons — 20px, coloured, meaningful ─────────────────────
+# Executive Summary — bar chart (performance at a glance)
+I_GRID  = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>'
+# E-E-A-T Scorecard — shield (trust & authority)
+I_STAR  = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
+# Content Gaps — puzzle piece (missing pieces)
+I_SRCH  = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0891B2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>'
+# Technical Health — wrench (fixing things)
+I_STACK = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>'
+# Action Plan — rocket (launch / growth)
+I_CHECK = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>'
+# About — info circle
+I_INFO  = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+# Card-level icons (smaller, 14px)
+I_USERS = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>'
+I_TREND = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>'
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
 def _css():
@@ -201,7 +210,7 @@ def _css():
 html {{ height: 100%; }}
 body {{
   font-family: {F};
-  font-size: 17px;                  /* ← ALL fonts bigger */
+  font-size: 15px;
   line-height: 1.65;
   color: {INK};
   background: #F8F9FA;              /* ← soft non-white, retina-friendly */
@@ -236,7 +245,7 @@ code {{
 .topbar {{ background: {TOPBAR}; border-bottom: 1px solid {BORDER}; padding: 0 28px; height: 56px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; position: sticky; top: 0; z-index: 10; }}
 .pc {{ padding: 24px 28px; flex: 1; }}
 
-/* Premium blocked cards — thinner borders + deeper shadow + minimal margins */
+/* Premium blocked cards &#8212; thinner borders + deeper shadow + minimal margins */
 /* Premium blocked cards */
 .card {{
   background: {CARD};
@@ -249,7 +258,7 @@ code {{
   padding: 24px;
 }}
 
-/* Stat cards — 4-column row in executive summary */
+/* Stat cards &#8212; 4-column row in executive summary */
 .stats {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }}
 .stat {{
   background: {CARD};
@@ -282,13 +291,42 @@ code {{
   margin: 36px 0 32px 0;
 }}
 
-/* Headings — larger + accessible */
-.ph {{ display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-top: 8px; }}
-.ph h2 {{ font-size: 22px; font-weight: 700; letter-spacing: -0.4px; }}
+/* Headings &#8212; larger + accessible */
+.ph {{ display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding-top: 8px; border-left: 3px solid #E5E7EB; padding-left: 14px; }}
+.ph-icon {{ display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: transparent !important; border-radius: 0 !important; flex-shrink: 0; }}
+.ph h2 {{ font-size: 24px; font-weight: 700; letter-spacing: -0.5px; color: #111827; }}
 
 /* Responsive */
 @media (max-width: 960px) {{ .card {{ margin-bottom: 16px; }} }}
-@media (max-width: 768px) {{ .sidebar {{ display: none; }} .pc {{ padding: 20px; }} }}
+@media (max-width: 768px) {{
+  .sidebar {{ display: none; }}
+  .pc {{ padding: 12px; }}
+  .stats {{ grid-template-columns: repeat(2, 1fr); gap: 8px; }}
+  .grid2 {{ grid-template-columns: 1fr; }}
+  .ph h2 {{ font-size: 18px; }}
+  .card {{ padding: 14px; }}
+  .stat {{ padding: 12px 14px; }}
+
+  /* Tables: wrap in scroll container */
+  .table-wrap {{ overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }}
+  table {{ width: 100%; min-width: 420px; border-collapse: collapse; }}
+  colgroup, col {{ display: none; }}
+  th, td {{ white-space: normal; padding: 8px 10px; font-size: 12px; }}
+
+  /* URL code tags: truncate cleanly */
+  code {{
+    display: block;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+    word-break: normal;
+  }}
+
+  /* Hide progress bar Visual column on mobile */
+  .hide-mobile {{ display: none !important; }}
+}}
 </style>"""
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -319,15 +357,25 @@ def _sidebar(domain):
 
 def _topbar(domain, date_str):
     return (
+        # Brand stripe
+        f'<div style="background:#111827;padding:10px 28px;display:flex;align-items:center;justify-content:space-between;">'
+        f'<div style="display:flex;align-items:center;gap:10px;">'
+        f'<div style="width:8px;height:8px;border-radius:50%;background:#C0392B;"></div>'
+        f'<span style="font-family:{F};font-size:14px;font-weight:700;color:#fff;letter-spacing:-0.3px;">Capital<span style="color:#C0392B;">AI</span>.ca</span>'
+        f'<span style="color:#4B5563;font-size:12px;margin-left:4px;">AI Visibility Audit</span>'
+        f'</div>'
+        f'<div style="font-size:11px;color:#6B7280;">{date_str}</div>'
+        f'</div>'
+        # Topbar
         f'<div class="topbar">'
         f'<div class="bc"><span>CapitalAI Audit</span><span>›</span><span class="active">{domain}</span><span>›</span><span class="active">Full Audit Report</span></div>'
-        f'<div style="display:flex;align-items:center;gap:12px;"><span style="font-size:12px;color:{DIM};">{date_str}</span><span style="padding:2px 10px;border-radius:100px;background:{RED_L};font-size:11px;font-weight:600;color:{RED};">Confidential</span></div>'
+        f'<div style="display:flex;align-items:center;gap:12px;"><span style="padding:2px 10px;border-radius:100px;background:{RED_L};font-size:11px;font-weight:600;color:{RED};">Confidential</span></div>'
         f'</div>'
     )
 
 # ── Sections (unchanged except safe_len) ─────────────────────────────────────
 
-def _s_summary(domain, client_data, competitor_data, eeat_scores, technical, section_id="exec-summary", tint_class="summary-card"):
+def _s_summary(domain, client_data, competitor_data, eeat_scores, technical, section_id="exec-summary", tint_class="summary-card", gap_results=None, citation_results=None):
     agg     = eeat_scores.get("site_aggregate", {})
     tech    = technical.get("summary", {})
     overall = agg.get("overall_score", "N/A")
@@ -335,6 +383,8 @@ def _s_summary(domain, client_data, competitor_data, eeat_scores, technical, sec
     n_pages = _safe_len(client_data)
     n_comps = _safe_len(competitor_data)
     issues  = (tech.get("missing_meta", 0) + tech.get("h1_issues", 0) + tech.get("no_schema_pages", 0))
+    gap_results      = gap_results or {}
+    citation_results = citation_results or {}
 
     try:
         o = float(overall)
@@ -378,15 +428,186 @@ def _s_summary(domain, client_data, competitor_data, eeat_scores, technical, sec
         f'</div>'
     ) if verdict else ""
 
-    return (
-        f'<div class="ph"><div class="ph-icon" style="background:{PRIMARY};">{I_GRID}</div><h2 id="{section_id}">Executive Summary</h2></div>'
-        f'<div class="stats">'
-        f'<div class="stat" style="border-top:3px solid {PRIMARY};"><div class="stat-lbl">Pages Audited</div><div class="stat-val" style="color:{PRIMARY};">{n_pages}</div></div>'
-        f'<div class="stat" style="border-top:3px solid {_sc(overall)};"><div class="stat-lbl">E-E-A-T Score</div><div class="stat-val" style="color:{_sc(overall)};">{overall}/10</div><div class="stat-sub">{htxt}</div></div>'
-        f'<div class="stat" style="border-top:3px solid {"#DC2626" if issues > 0 else GREEN};"><div class="stat-lbl">Technical Issues</div><div class="stat-val" style="color:{"#DC2626" if issues > 0 else GREEN};">{issues}</div></div>'
-        f'<div class="stat" style="border-top:3px solid {AMBER};"><div class="stat-lbl">Competitors</div><div class="stat-val" style="color:{AMBER};">{n_comps}</div></div>'
+    # ── Plain-English translation block ────────────────────────────────────
+    try:
+        eeat_score = float(overall)
+    except (TypeError, ValueError):
+        eeat_score = 0
+
+    no_schema   = tech.get("no_schema_pages", 0)
+    missing_alt = tech.get("missing_alt", 0)
+    h1_issues   = tech.get("h1_issues", 0)
+
+    translations = []
+
+    if eeat_score < 4:
+        translations.append((
+            "AI search won't recommend you",
+            f"Your site scored {overall}/10 on E-E-A-T &#8212; Google and AI tools like Perplexity and ChatGPT use this to decide who to cite. Below 4/10 means you're effectively invisible in AI-generated answers, no matter how good your service is."
+        ))
+    elif eeat_score < 6:
+        translations.append((
+            "AI search is on the fence about you",
+            f"Your site scored {overall}/10 on E-E-A-T. You're in the zone where competitors with stronger trust signals will consistently outrank you in both Google and AI-generated recommendations."
+        ))
+
+    if no_schema > 0:
+        translations.append((
+            f"{no_schema} pages are invisible to AI search",
+            f"Schema markup is the structured data that tells AI exactly what your business is, where you are, and what you offer. Without it, AI tools skip you entirely &#8212; even when you're the best answer."
+        ))
+
+    if missing_alt > 0:
+        translations.append((
+            f"{missing_alt} images have no description",
+            "Every image without alt text is a missed ranking signal. Google Images, voice search, and accessibility tools all depend on this. It also risks WCAG compliance issues."
+        ))
+
+    if h1_issues > 0:
+        translations.append((
+            "A key page isn't telling Google its topic",
+            "One page is missing or has a broken H1 heading. This is the first signal crawlers use to understand what a page is about &#8212; without it, ranking for that page's target keywords is an uphill battle."
+        ))
+
+    if not translations:
+        translations.append((
+            "Your technical foundation is solid",
+            "No major red flags detected in the core metrics. Focus efforts on content gaps and E-E-A-T improvement for the biggest ranking gains."
+        ))
+
+    translation_rows = "".join([
+        f'<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #F3F4F6;">'
+        f'<div style="flex-shrink:0;margin-top:2px;width:18px;height:18px;border-radius:50%;background:#FEF2F2;display:flex;align-items:center;justify-content:center;">'
+        f'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="3"><path d="M12 9v4M12 17h.01"/></svg></div>'
+        f'<div><div style="font-size:13px;font-weight:600;color:#111827;margin-bottom:3px;">{title}</div>'
+        f'<div style="font-size:12px;color:#6B7280;line-height:1.6;">{body}</div></div>'
         f'</div>'
-        f'<div class="grid2">{_card(_table([], health_rows, ["52%", "48%"]) + verdict_block, I_GRID, "Site Health Overview")}{_card(worst_inner, I_STAR, "Most Critical Finding")}</div>'
+        for title, body in translations
+    ])
+
+    plain_english_block = (
+        f'<div class="card" style="margin-bottom:20px;">'
+        f'<div style="padding:12px 20px;background:#F9FAFB;border-bottom:1px solid #E5E7EB;display:flex;align-items:center;gap:8px;">'
+        f'<span style="font-size:16px;">💬</span>'
+        f'<span style="font-size:14px;font-weight:600;color:#374151;">What this means for your business</span>'
+        f'</div>'
+        f'<div style="padding:0 20px 4px;">{translation_rows}</div>'
+        f'</div>'
+    )
+
+    # ── Citation verdict ────────────────────────────────────────────────────
+    cit_summary = citation_results.get("summary", {})
+    cit_verdict = cit_summary.get("overall_verdict", "SKIPPED")
+    cit_p_cited = cit_summary.get("perplexity_cited", 0)
+    cit_p_total = cit_summary.get("perplexity_total", 0)
+    if cit_verdict == "CITED":
+        cit_col, cit_icon = GREEN, "✓"
+        cit_label = "Cited by AI"
+    elif cit_verdict == "PARTIAL":
+        cit_col, cit_icon = AMBER, "~"
+        cit_label = "Partially Cited"
+    elif cit_verdict == "NOT CITED":
+        cit_col, cit_icon = RED, "✗"
+        cit_label = "Not Cited by AI"
+    else:
+        cit_col, cit_icon = DIM, "&#8212;"
+        cit_label = "Citation: N/A"
+
+    cit_sub = f"{cit_p_cited}/{cit_p_total} queries" if cit_p_total > 0 else "Run audit to check"
+
+    # ── Content gap count ────────────────────────────────────────────────────
+    n_gaps = len(gap_results.get("content_gaps", []))
+    comp_pages = sum(_safe_len(v) for v in competitor_data.values()) if competitor_data else 0
+
+    # ── Biggest opportunity sentence ─────────────────────────────────────────
+    no_schema  = tech.get("no_schema_pages", 0)
+    n_thin     = len(technical.get("thin_content", []))
+    missing_alt = tech.get("missing_alt", 0)
+
+    if no_schema > 0 and cit_verdict == "NOT CITED":
+        opp_text = f"Adding schema markup to {no_schema} pages is the single fastest path to appearing in AI search results &#8212; typically within 4–8 weeks of implementation."
+    elif n_gaps > 0:
+        opp_text = f"Creating {min(n_gaps, 5)} targeted content pages closes your biggest traffic gaps and gives AI a reason to cite you over competitors."
+    elif missing_alt > 0:
+        opp_text = f"Fixing {missing_alt} missing image descriptions improves accessibility, image search ranking, and overall site trust signals immediately."
+    else:
+        opp_text = "Your technical foundation is strong. Focus on content depth and E-E-A-T signals for the next growth phase."
+
+    # ── Estimated effort block ───────────────────────────────────────────────
+    effort_items = []
+    h1_i = tech.get("h1_issues", 0)
+    crit_pages = sum(1 for s in eeat_scores.get("page_scores", {}).values()
+                     if not isinstance(s, str) and "parse_error" not in s
+                     and float(s.get("overall_score", 10) if not isinstance(s.get("overall_score"), str) else 10) < 4.0)
+
+    if h1_i > 0:
+        effort_items.append(f"Fix {h1_i} H1 tag issue &#8212; 15 min")
+    if no_schema > 0:
+        effort_items.append(f"Add schema to {no_schema} pages &#8212; 2–4 hrs")
+    if crit_pages > 0:
+        effort_items.append(f"Add instructor bios to {crit_pages} pages &#8212; 1–2 hrs")
+    if not effort_items:
+        effort_items.append("No urgent Week 1 fixes required")
+
+    effort_rows = "".join(
+        f'<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #F3F4F6;">'
+        f'<div style="width:6px;height:6px;border-radius:50%;background:{PRIMARY};flex-shrink:0;"></div>'
+        f'<div style="font-size:12px;color:{INK2};">{item}</div></div>'
+        for item in effort_items
+    )
+
+    # ── Verdict sentence ─────────────────────────────────────────────────────
+    if cit_verdict == "NOT CITED" and o < 4:
+        verdict_sentence = f"This site is currently invisible to AI search and below Google's trust threshold. Customers are finding competitors instead."
+    elif cit_verdict == "NOT CITED":
+        verdict_sentence = f"This site does not appear in AI-generated recommendations for its core services. Schema and content fixes will change that."
+    elif o < 4:
+        verdict_sentence = f"AI citations exist but the site's trust signals are too weak for Google to consistently recommend it."
+    else:
+        verdict_sentence = f"Solid foundation. Focus on content gaps and freshness to dominate AI citations."
+
+    # ── Competitor comparison ────────────────────────────────────────────────
+    if n_gaps > 0 and comp_pages > 0:
+        comp_row = (
+            f'<div style="background:#FFFBEB;border-left:3px solid {AMBER};border-radius:0 6px 6px 0;padding:10px 14px;margin-top:12px;">'
+            f'<div style="font-size:11px;font-weight:700;color:{AMBER};text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Competitor Gap</div>'
+            f'<div style="font-size:13px;color:{INK2};">Competitors have <strong>{n_gaps} topic areas</strong> your site does not cover. Each one is traffic &#8212; and AI citations &#8212; going to them instead of you.</div>'
+            f'</div>'
+        )
+    else:
+        comp_row = ""
+
+    # ── Assemble new exec summary ────────────────────────────────────────────
+    return (
+        f'<div class="ph" style="border-left-color:#3B82F6;"><div class="ph-icon">{I_GRID}</div><h2 id="{section_id}">Executive Summary</h2></div>'
+
+        # ── 5 stat cards including AI citation ──
+        f'<div class="stats" style="grid-template-columns:repeat(5,1fr);">'
+        f'<div class="stat" style="border-top:3px solid {PRIMARY};"><div class="stat-lbl">Pages Audited</div><div class="stat-val" style="color:{PRIMARY};">{n_pages}</div></div>'
+        f'<div class="stat" style="border-top:3px solid {_sc(overall)};"><div class="stat-lbl">E-E-A-T Score</div><div style="font-size:9px;color:#9CA3AF;margin-top:2px;line-height:1.3;">Exp · Exp · Auth · Trust</div><div class="stat-val" style="color:{_sc(overall)};">{overall}/10</div><div class="stat-sub">{htxt}</div></div>'
+        f'<div class="stat" style="border-top:3px solid {"#DC2626" if issues > 0 else GREEN};"><div class="stat-lbl">Technical Issues</div><div class="stat-val" style="color:{"#DC2626" if issues > 0 else GREEN};">{issues}</div></div>'
+        f'<div class="stat" style="border-top:3px solid {cit_col};"><div class="stat-lbl">AI Citations</div><div class="stat-val" style="color:{cit_col};font-size:14px;">{cit_label}</div><div class="stat-sub">{cit_sub}</div></div>'
+        f'<div class="stat" style="border-top:3px solid {AMBER if n_gaps > 0 else GREEN};"><div class="stat-lbl">Content Gaps</div><div class="stat-val" style="color:{AMBER if n_gaps > 0 else GREEN};">{n_gaps}</div><div class="stat-sub">vs competitors</div></div>'
+        f'</div>'
+
+        # ── Verdict sentence ──
+        f'<div style="background:{"#FEF2F2" if cit_verdict == "NOT CITED" else "#FFFBEB" if cit_verdict == "PARTIAL" else "#F0FDF4"};'
+        f'border-left:4px solid {cit_col};border-radius:0 8px 8px 0;padding:14px 18px;margin:16px 0;">'
+        f'<div style="font-size:15px;font-weight:700;color:{INK};margin-bottom:4px;">{verdict_sentence}</div>'
+        f'<div style="font-size:12px;color:{MUTED};">Based on {n_pages} pages audited · {n_comps} competitors analyzed · Perplexity citation check</div>'
+        f'</div>'
+
+        # ── Plain-English translations ──
+        f'{plain_english_block}'
+
+        # ── Two-column: Site Health + Biggest Opportunity ──
+        f'<div class="grid2">'
+        f'{_card(_table([], health_rows, ["52%", "48%"]) + verdict_block + comp_row, I_GRID, "Site Health Overview")}'
+        f'<div>'
+        f'{_card(f"""<div style="font-size:13px;color:{INK2};line-height:1.7;margin-bottom:16px;">{opp_text}</div>""" + f"""<div style="font-size:11px;font-weight:700;color:{MUTED};text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Week 1 &#8212; Estimated Effort</div>""" + effort_rows, I_CHECK, "Biggest Opportunity")}'
+        f'{_card(worst_inner, I_STAR, "Most Critical Finding")}'
+        f'</div>'
+        f'</div>'
     )
 
 def _s_eeat(eeat_scores, client_data, section_id="eeat-scorecard", tint_class="eeat-card"):
@@ -394,8 +615,8 @@ def _s_eeat(eeat_scores, client_data, section_id="eeat-scorecard", tint_class="e
     page_scores = eeat_scores.get("page_scores", {})
 
     html = (f'<div class="ph">'
-            f'<div class="ph-icon" style="background:#7C3AED;">{I_STAR}</div>'
-            f'<h2 id="{section_id}">E-E-A-T Scorecard</h2></div>')
+            f'<div class="ph-icon">{I_STAR}</div>'
+            f'<h2 id="{section_id}">Experience, Expertise, Authoritativeness &amp; Trustworthiness (E-E-A-T) Scorecard</h2></div>')
 
     if not agg or "error" in agg:
         return html + _card(
@@ -506,7 +727,7 @@ def _s_eeat(eeat_scores, client_data, section_id="eeat-scorecard", tint_class="e
                 f'<span style="font-size:12px;color:{MUTED};">Use as internal link source</span>',
             ])
         html += (f'<div style="font-size:13px;font-weight:600;color:{INK};'
-                 f'margin:16px 0 10px;">Strong Pages — Protect &amp; Amplify</div>'
+                 f'margin:16px 0 10px;">Strong Pages &#8212; Protect &amp; Amplify</div>'
                  + _card(_table(["Page", "Score", "Recommended Action"],
                                 srows, ["45%", "15%", "40%"]),
                          I_STAR, "High E-E-A-T Pages", extra_class=tint_class))
@@ -520,7 +741,7 @@ def _s_gaps(gap_results, competitor_data, section_id="content-gaps", tint_class=
     strengths = gap_results.get("unique_strengths", [])
 
     html = (f'<div class="ph">'
-            f'<div class="ph-icon" style="background:#0891B2;">{I_SRCH}</div>'
+            f'<div class="ph-icon">{I_SRCH}</div>'
             f'<h2 id="{section_id}">Content Gap Analysis</h2></div>')
 
     if not competitor_data:
@@ -565,7 +786,7 @@ def _s_gaps(gap_results, competitor_data, section_id="content-gaps", tint_class=
             ])
         html += _card(_table(["#", "Missing Topic", "Priority"], gap_rows,
                               ["5%", "73%", "22%"]),
-                      I_SRCH, "Topics Competitors Own — You Don't", extra_class=tint_class)
+                      I_SRCH, "Topics Competitors Own &#8212; You Don't", extra_class=tint_class)
 
     if opps:
         html += (f'<div style="font-size:13px;font-weight:600;color:{INK};'
@@ -601,17 +822,17 @@ def _s_gaps(gap_results, competitor_data, section_id="content-gaps", tint_class=
 def _s_technical(technical, client_data, section_id="technical-health", tint_class="technical-card"):
     tech = technical.get("summary", {})
     data = [
-        ("Missing meta descriptions", tech.get("missing_meta",      0), "Hurts CTR — Google writes them poorly"),
+        ("Missing meta descriptions", tech.get("missing_meta",      0), "Hurts CTR &#8212; Google writes them poorly"),
         ("H1 tag issues",             tech.get("h1_issues",         0), "Confuses crawlers on topic"),
         ("Images missing alt text",   tech.get("alt_tag_issues",    0), "Accessibility + image search loss"),
         ("Pages without schema",      tech.get("no_schema_pages",   0), "Missing rich result eligibility"),
-        ("Thin content (<300 words)", tech.get("thin_pages",        0), "E-E-A-T risk under Helpful Content"),
+        ("Thin content (<300 words)", tech.get("thin_pages",        0), "Experience, Expertise, Authoritativeness &amp; Trustworthiness (E-E-A-T) risk under Helpful Content"),
         ("Missing canonical tags",    tech.get("missing_canonical", 0), "Duplicate content signal"),
     ]
     total = sum(r[1] for r in data)
 
     html = (f'<div class="ph">'
-            f'<div class="ph-icon" style="background:#059669;">{I_STACK}</div>'
+            f'<div class="ph-icon">{I_STACK}</div>'
             f'<h2 id="{section_id}">Technical SEO Health</h2></div>')
 
     rows = []
@@ -684,33 +905,33 @@ def _s_plan(eeat_scores, gap_results, technical, section_id="action-plan", tint_
                       and float(s.get("overall_score", 10) or 10) < 5.0)
 
     html = (f'<div class="ph">'
-            f'<div class="ph-icon" style="background:{AMBER};">{I_CHECK}</div>'
+            f'<div class="ph-icon">{I_CHECK}</div>'
             f'<h2 id="{section_id}">Prioritized Action Plan</h2></div>')
 
     phases = [
-        ("Week 1 — Fix the Foundation", RED, RED_L, "#FCA5A5", [
+        ("Week 1 &#8212; Fix the Foundation", RED, RED_L, "#FCA5A5", [
             (f"Write meta descriptions for {mm} page(s)" if mm else "✓ Meta descriptions complete",
-             "Direct CTR impact — 30 min per page", RED if mm else GREEN, mm == 0),
+             "Direct CTR impact &#8212; 30 min per page", RED if mm else GREEN, mm == 0),
             (f"Fix H1 tags on {h1} page(s)" if h1 else "✓ H1 tags healthy",
              "Critical for crawler topic understanding", RED if h1 else GREEN, h1 == 0),
             (f"E-E-A-T repair on {crit} critical page(s)" if crit else "✓ No critical E-E-A-T pages",
              "Add author bio, trust signals, citations", RED if crit else GREEN, crit == 0),
         ]),
-        ("Month 1 — Build Authority", AMBER, AMBER_L, "#FCD34D", [
+        ("Month 1 &#8212; Build Authority", AMBER, AMBER_L, "#FCD34D", [
             (f"Add schema to {ns} unstructured page(s)", "Unlock rich result eligibility", AMBER, False),
             (f"Expand {tp} thin page(s) to 800+ words", "Reduce Helpful Content demotion risk", AMBER, False),
             ("Add author bio to all content pages", "Highest single-ROI E-E-A-T improvement", AMBER, False),
-            ("Internal link audit — connect strong to weak", "Distribute E-E-A-T authority", AMBER, False),
+            ("Internal link audit &#8212; connect strong to weak", "Distribute E-E-A-T authority", AMBER, False),
         ]),
-        ("Month 2–3 — Scale & Dominate", GREEN, GREEN_L, "#86EFAC", [
+        ("Month 2–3 &#8212; Scale & Dominate", GREEN, GREEN_L, "#86EFAC", [
             (f"Create {min(len(opps),5)} pillar pages from opportunities",
              "Close identified traffic gaps", GREEN, False),
             (f"Close {len(gaps)} content gaps with targeted articles",
              "Each = writer brief + schema requirement", GREEN, False),
-            ("Geo-programmatic expansion — Ottawa + NCR",
+            ("Geo-programmatic expansion &#8212; Ottawa + NCR",
              "KrispCall/Flyhomes-style scale play", GREEN, False),
             ("Weekly freshness automation via n8n", "Maintain ranking momentum", GREEN, False),
-            ("AI citation targeting — restructure as answer capsules",
+            ("AI citation targeting &#8212; restructure as answer capsules",
              "Perplexity, ChatGPT, Claude citations", GREEN, False),
         ]),
     ]
@@ -736,8 +957,8 @@ def _s_about(domain, model, section_id="about-report"):
         ("Generated",  now),
         ("Domain",     domain),
         ("Engine",     "CapitalAI-Audit-Crawler v1.0"),
-        ("Crawler",    "Crawl4AI — Playwright, full JS rendering"),
-        ("AI Model",   f"Ollama {model} — 100% local inference"),
+        ("Crawler",    "Crawl4AI &#8212; Playwright, full JS rendering"),
+        ("AI Model",   f"Ollama {model} &#8212; 100% local inference"),
         ("Privacy",    "No client data left your machine. Zero cloud APIs."),
         ("Review",     "E-E-A-T Guardian sign-off required before delivery"),
     ]
@@ -748,7 +969,7 @@ def _s_about(domain, model, section_id="about-report"):
 
     return (
         f'<div class="ph">'
-        f'<div class="ph-icon" style="background:{MUTED};">{I_INFO}</div>'
+        f'<div class="ph-icon">{I_INFO}</div>'
         f'<h2 id="{section_id}">About This Report</h2></div>'
         + _card(_table([], rows, ["28%", "72%"])
                 + f'<div style="background:{AMBER_L};border-left:3px solid {AMBER};'
@@ -788,17 +1009,17 @@ def _cta():
 
 # ── Document assembly ─────────────────────────────────────────────────────────
 
-def _build(domain, client_data, competitor_data, gap_results, eeat_scores, technical, model):
+def _build(domain, client_data, competitor_data, gap_results, eeat_scores, technical, model, citation_results=None):
     date_str = datetime.now().strftime("%B %d, %Y")
     now_iso  = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
     sections = (
         f'<div class="gate">⚠️ '
-        f'<strong>Human Review Required — </strong>'
-        f'All findings require E-E-A-T Guardian approval before client delivery.'
+        f'<strong>Human Review Required &#8212; </strong>'
+        f'All findings require Experience, Expertise, Authoritativeness &amp; Trustworthiness (E-E-A-T) Guardian approval before client delivery.'
         f'</div>'
 
-        + _s_summary(domain, client_data, competitor_data, eeat_scores, technical, section_id="exec-summary", tint_class="summary-card")
+        + _s_summary(domain, client_data, competitor_data, eeat_scores, technical, section_id="exec-summary", tint_class="summary-card", gap_results=gap_results, citation_results=citation_results)
         + '<div class="sep"></div>'
 
         + _s_eeat(eeat_scores, client_data, section_id="eeat-scorecard", tint_class="eeat-card")
@@ -820,7 +1041,7 @@ def _build(domain, client_data, competitor_data, gap_results, eeat_scores, techn
         '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
         '<meta charset="UTF-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
-        f'<title>SEO Audit — {domain}</title>\n'
+        f'<title>SEO Audit &#8212; {domain}</title>\n'
         f'<meta name="generator" content="CapitalAI-Audit-Crawler v1.0">\n'
         f'<meta name="date" content="{now_iso}">\n'
         + _css()
@@ -848,6 +1069,7 @@ def write_html_report(
     technical: dict,
     model: str = "llama3.1:8b",
     output_dir: str = "reports",
+    citation_results: dict | None = None,
 ) -> str:
     """Generate a Sitemate-style SaaS dashboard HTML audit report."""
     timestamp   = datetime.now().strftime("%Y%m%d_%H%M")
@@ -855,6 +1077,7 @@ def write_html_report(
     filepath    = Path(output_dir) / f"{safe_domain}_{timestamp}_audit.html"
     filepath.parent.mkdir(parents=True, exist_ok=True)
     html = _build(domain, client_data, competitor_data,
-                  gap_results, eeat_scores, technical, model)
+                  gap_results, eeat_scores, technical, model,
+                  citation_results=citation_results or {})
     filepath.write_text(html, encoding="utf-8")
     return str(filepath)

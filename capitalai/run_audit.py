@@ -1,23 +1,9 @@
-# capitalai/run_audit.py
-# File: capitalai/run_audit.py
-#
-# ENCODING FIX:
-#   Reconfigure sys.stdout/stderr to UTF-8 BEFORE any imports touch them.
-#   This is the only reliable method on Windows PowerShell (CP1252 by default).
-#   os.environ["PYTHONIOENCODING"] is too late — Python has already opened stdout.
-#   Rich Console(force_terminal=True) keeps colour; safe=True would strip it.
+#!/usr/bin/env python
 
-import sys
-
-# Reconfigure stdout/stderr to UTF-8 before anything else touches them.
-# errors="replace" means any unencodable char becomes ? instead of crashing.
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-if hasattr(sys.stderr, "reconfigure"):
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-
+import os
+os.environ["PYTHONIOENCODING"] = "utf-8"
 """
-CapitalAI Audit Crawler - CLI Entry Point
+CapitalAI Audit Crawler — CLI Entry Point
 
 HOW TO RUN:
   python capitalai/run_audit.py --client https://capitalai.ca
@@ -30,7 +16,7 @@ Default: generates Markdown + PDF + HTML email (all three).
 """
 
 # ── Path fix — MUST be before all capitalai imports ───────────────────────────
-import os, asyncio
+import sys, os, asyncio
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -40,37 +26,20 @@ if str(_REPO_ROOT) not in sys.path:
 
 import typer
 from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
 
 from capitalai.audit.competitor import crawl_client, crawl_competitors
 from capitalai.audit.gap_analysis import run_gap_analysis
 from capitalai.audit.eeat_scorer import score_eeat
 from capitalai.audit.technical import run_technical_audit
+from capitalai.audit.citation_checker import check_ai_citations
 from capitalai.output.markdown_writer import write_markdown_report
 from capitalai.output.json_writer import write_json_report
 from capitalai.config.settings import DEFAULT_MODEL, REPORTS_DIR
 
 app     = typer.Typer(add_completion=False)
-# force_terminal=True keeps Rich colour markup active in PowerShell
-console = Console(force_terminal=True)
-
-
-def _safe(text) -> str:
-    """Replace any non-ASCII characters with ASCII equivalents before printing.
-    Prevents garbling on Windows PowerShell (CP1252 codepage).
-    Handles common Unicode punctuation that Ollama frequently outputs."""
-    if not isinstance(text, str):
-        text = str(text)
-    return (text
-            .replace("—", "-")   # em dash
-            .replace("–", "-")   # en dash
-            .replace("‘", "'")   # left single quote
-            .replace("’", "'")   # right single quote
-            .replace("“", '"')   # left double quote
-            .replace("”", '"')   # right double quote
-            .replace("…", "...") # ellipsis
-            .replace("â", "")    # common UTF-8 mangling artifact
-            .encode("ascii", "replace").decode("ascii")
-            )
+console = Console()
 
 
 @app.command()
@@ -79,6 +48,10 @@ def audit(
         help="Client site URL (required)"),
     competitors: list[str] = typer.Option([], "--competitors", "--comp",
         help="Competitor URLs. Repeat flag for each. Max 5."),
+    business: str = typer.Option("", "--business", "-b",
+        help="Business name (for citation queries). Auto-inferred from domain if omitted."),
+    location: str = typer.Option("Ottawa", "--location", "-l",
+        help="City/location for citation queries (default: Ottawa)"),
     depth: int = typer.Option(None,
         help="Crawl depth (default: 3 client, 2 competitors)"),
     model: str = typer.Option(DEFAULT_MODEL,
@@ -87,6 +60,10 @@ def audit(
         help="Output directory"),
     skip_eeat: bool = typer.Option(False, "--skip-eeat",
         help="Skip Ollama E-E-A-T scoring (faster)"),
+    skip_citations: bool = typer.Option(False, "--skip-citations",
+        help="Skip AI citation check (Perplexity + Grok)"),
+    skip_grok: bool = typer.Option(False, "--skip-grok",
+        help="Skip Grok check only (use if Grok session not set up)"),
     pdf: bool = typer.Option(True, "--pdf/--no-pdf",
         help="Generate PDF report (default: on)"),
     email: bool = typer.Option(True, "--email/--no-email",
@@ -96,84 +73,107 @@ def audit(
     Run a full CapitalAI SEO audit.
 
     Outputs (all on by default):
-      Markdown  - internal review version
-      JSON      - 7-agent crew input
-      PDF       - premium branded client deliverable
-      HTML      - dashboard-style client report
+      Markdown  — internal review version
+      JSON      — 7-agent crew input
+      PDF       — premium branded client deliverable
+      HTML      — email-ready client version with CTA
     """
-    asyncio.run(_run_audit(
+    asyncio.run(_run_audit_impl(
         client_url=client,
         competitor_urls=competitors,
+        business_name=business,
+        location=location,
         depth=depth,
         model=model,
         output_dir=output,
         skip_eeat=skip_eeat,
+        skip_citations=skip_citations,
+        skip_grok=skip_grok,
         gen_pdf=pdf,
         gen_email=email,
     ))
 
 
-async def _run_audit(
-    client_url, competitor_urls, depth, model,
-    output_dir, skip_eeat, gen_pdf, gen_email
-):
-    """Main audit workflow - single definition, no duplicates."""
+async def _run_audit_impl(client_url, competitor_urls, business_name, location,
+                          depth, model, output_dir, skip_eeat, skip_citations,
+                          skip_grok, gen_pdf, gen_email):
+    """Main audit workflow implementation."""
 
-    # ── Startup banner ────────────────────────────────────────────────────────
-    console.print()
-    console.print("[bold cyan]CapitalAI Audit Crawler[/bold cyan]")
-    console.print(f"  [bold]Client:[/bold]      {client_url}")
+    domain = urlparse(client_url).netloc
+    if not business_name:
+        business_name = domain.replace("www.", "").split(".")[0].replace("-", " ").title()
+
+    console.print(f"[bold cyan]Starting Audit[/bold cyan]")
+    console.print(f"[bold]Client:[/bold]   {client_url}")
+    console.print(f"[bold]Business:[/bold] {business_name} · {location}")
     if competitor_urls:
-        console.print(f"  [bold]Competitors:[/bold] {', '.join(competitor_urls)}")
-    else:
-        console.print("  [bold]Competitors:[/bold] None")
-    console.print(f"  [bold]Model:[/bold]       {model}")
-    console.print(f"  [bold]Outputs:[/bold]     MD + JSON + PDF + HTML")
-    console.print("-" * 60)
+        console.print(f"[bold]Competitors:[/bold] {', '.join(competitor_urls)}")
+    console.print(f"[bold]Model:[/bold]    {model}")
+    console.rule()
 
-    domain      = urlparse(client_url).netloc
-    total_steps = 6 + (1 if gen_pdf else 0) + (1 if gen_email else 0)
-    step        = 0
+    total_steps = 7 + (1 if gen_pdf else 0) + (1 if gen_email else 0)
+    if skip_citations:
+        total_steps -= 1
+    step = 0
 
     def _step(label):
         nonlocal step
         step += 1
         console.print(f"[bold yellow][{step}/{total_steps}][/bold yellow] {label}")
 
-    # ── Crawl client ──────────────────────────────────────────────────────────
+    # ── Crawl client ────────────────────────────────────────────────────────
     _step("Crawling client site...")
     client_data = await crawl_client(client_url, depth=depth or 3)
 
-    # ── Crawl competitors ─────────────────────────────────────────────────────
+    # ── Crawl competitors ───────────────────────────────────────────────────
     competitor_data = {}
     if competitor_urls:
         _step("Crawling competitors...")
         competitor_data = await crawl_competitors(competitor_urls, depth=depth or 2)
     else:
         step += 1
-        console.print(f"[dim][{step}/{total_steps}] No competitors - skipping.[/dim]")
+        console.print(f"\n[dim][{step}/{total_steps}] No competitors — skipping.[/dim]")
 
-    # ── Gap analysis ──────────────────────────────────────────────────────────
+    # ── AI Citation check ───────────────────────────────────────────────────
+    citation_results = {
+        "perplexity": [], "grok": [],
+        "summary": {"overall_verdict": "SKIPPED",
+                    "perplexity_cited": 0, "perplexity_total": 0,
+                    "grok_cited": 0, "grok_total": 0},
+    }
+    if not skip_citations:
+        _step("Checking AI citations (Perplexity + Grok)...")
+        citation_results = await check_ai_citations(
+            domain=domain,
+            business_name=business_name,
+            location=location,
+            skip_grok=skip_grok,
+        )
+    else:
+        step += 1
+        console.print(f"\n[dim][{step}/{total_steps}] Citation check skipped (--skip-citations).[/dim]")
+
+    # ── Gap analysis ────────────────────────────────────────────────────────
     _step("Running Ollama gap analysis...")
     gap_results = run_gap_analysis(client_data, competitor_data, model=model)
 
-    # ── E-E-A-T scoring ───────────────────────────────────────────────────────
+    # ── E-E-A-T scoring ─────────────────────────────────────────────────────
     eeat_scores = {
         "page_scores": {}, "site_aggregate": {},
-        "pages_scored": 0, "total_pages_crawled": len(client_data),
+        "pages_scored": 0, "total_pages_crawled": len(client_data)
     }
     if not skip_eeat:
         _step("Scoring E-E-A-T via Ollama...")
         eeat_scores = score_eeat(client_data, model=model)
     else:
         step += 1
-        console.print(f"[dim][{step}/{total_steps}] E-E-A-T skipped (--skip-eeat).[/dim]")
+        console.print(f"\n[dim][{step}/{total_steps}] E-E-A-T skipped (--skip-eeat).[/dim]")
 
-    # ── Technical checks ──────────────────────────────────────────────────────
+    # ── Technical checks ────────────────────────────────────────────────────
     _step("Running technical SEO checks...")
     technical = run_technical_audit(client_data, model=model)
 
-    # ── Markdown + JSON ───────────────────────────────────────────────────────
+    # ── Markdown + JSON ─────────────────────────────────────────────────────
     _step("Writing Markdown + JSON reports...")
     os.makedirs(output_dir, exist_ok=True)
 
@@ -186,75 +186,66 @@ async def _run_audit(
         gap_results, eeat_scores, technical, model, output_dir
     )
 
-    # ── PDF ───────────────────────────────────────────────────────────────────
-    pdf_path = None
+    # ── HTML + PDF ──────────────────────────────────────────────────────────
+    # PDF writer generates HTML first, then renders it via Playwright.
+    # HTML writer is called standalone only if PDF is disabled.
+    pdf_path  = None
+    html_path = None
+
     if gen_pdf:
-        _step("Generating PDF report...")
+        _step("Generating HTML + PDF report...")
         try:
             from capitalai.output.pdf_writer import write_pdf_report
             pdf_path = write_pdf_report(
                 domain, client_data, competitor_data,
-                gap_results, eeat_scores, technical, model, output_dir
+                gap_results, eeat_scores, technical, model, output_dir,
+                citation_results=citation_results,
             )
-            console.print(f"  [green]OK[/green] {pdf_path}")
-        except ImportError:
-            console.print(
-                "  [yellow]PDF skipped - reportlab not installed.[/yellow]\n"
-                "  Run: [cyan]pip install reportlab[/cyan]"
-            )
+            if pdf_path:
+                html_path = pdf_path.replace("_audit.pdf", "_audit.html")
+                console.print(f"  [green]OK[/green] PDF  → {pdf_path}")
+                console.print(f"  [green]OK[/green] HTML → {html_path}")
         except Exception as e:
-            console.print(f"  [red]PDF failed: {e}[/red]")
+            console.print(f"  [red]PDF/HTML report failed: {e}[/red]")
 
-    # ── HTML report ───────────────────────────────────────────────────────────
-    html_path = None
-    if gen_email:
+    elif gen_email:
+        # PDF disabled — generate HTML only
         _step("Generating HTML report...")
         try:
             from capitalai.output.html_email_writer import write_html_report
             html_path = write_html_report(
                 domain, client_data, competitor_data,
-                gap_results, eeat_scores, technical, model, output_dir
+                gap_results, eeat_scores, technical, model, output_dir,
+                citation_results=citation_results,
             )
             console.print(f"  [green]OK[/green] {html_path}")
         except Exception as e:
             console.print(f"  [red]HTML report failed: {e}[/red]")
 
-    # ── Summary table ─────────────────────────────────────────────────────────
-    console.print("-" * 60)
+    # ── Summary ─────────────────────────────────────────────────────────────
+    console.rule()
     console.print("[bold green]Audit Complete[/bold green]")
-    console.print()
+    console.print(f"[bold]Pages crawled[/bold]        {len(client_data)}")
+    console.print(f"[bold]Competitors[/bold]          {len(competitor_data) if competitor_data else 0}")
+    console.print(f"[bold]E-E-A-T Score[/bold]        {eeat_scores.get('site_aggregate', {}).get('overall_score', 'N/A')}/10")
+    console.print(f"[bold]E-E-A-T Rating[/bold]       {eeat_scores.get('site_aggregate', {}).get('verdict', 'WEAK')}")
+    console.print(f"[bold]Missing meta[/bold]         {technical.get('summary', {}).get('missing_meta', 0)}")
+    console.print(f"[bold]No schema pages[/bold]      {technical.get('summary', {}).get('no_schema_pages', 0)}")
+    console.print(f"[bold]Content gaps[/bold]         {len(gap_results.get('content_gaps', []))}")
+    console.print(f"[bold]AI Citation verdict[/bold]  {citation_results['summary']['overall_verdict']}")
+    console.print(f"  Perplexity: {citation_results['summary']['perplexity_cited']}/{citation_results['summary']['perplexity_total']} queries cited")
+    console.print(f"  Grok:       {citation_results['summary']['grok_cited']}/{citation_results['summary']['grok_total']} queries cited")
 
-    agg  = eeat_scores.get("site_aggregate", {})
-    tech = technical.get("summary", {})
-    gaps = gap_results.get("content_gaps", [])
-
-    # Plain text summary — no Unicode box characters, no emojis
-    rows = [
-        ("Pages crawled",    str(len(client_data))),
-        ("Competitors",      str(len(competitor_data) if competitor_data else 0)),
-        ("E-E-A-T Score",    f"{agg.get('overall_score', 'N/A')}/10"),
-        ("E-E-A-T Rating",   _safe(agg.get("rating", "N/A"))),
-        ("Missing meta",     str(tech.get("missing_meta", 0))),
-        ("No schema pages",  str(tech.get("no_schema_pages", 0))),
-        ("Content gaps",     str(len(gaps))),
-        ("---",              "---"),
-        ("Markdown",         _safe(str(md_path))),
-        ("JSON",             _safe(str(json_path))),
-    ]
+    console.print("\n[bold]Markdown[/bold]             " + str(md_path))
+    console.print("[bold]JSON[/bold]                 " + str(json_path))
     if pdf_path:
-        rows.append(("PDF", _safe(str(pdf_path))))
+        console.print("[bold]PDF[/bold]                  " + str(pdf_path))
     if html_path:
-        rows.append(("HTML Report", _safe(str(html_path))))
+        console.print("[bold]HTML Report[/bold]          " + str(html_path))
 
-    for label, value in rows:
-        if label == "---":
-            console.print()
-            continue
-        console.print(f"  [bold]{label:<18}[/bold] {_safe(value)}")
+    console.print("\n[bold red]Human review required[/bold red] — E-E-A-T Guardian sign-off before client delivery.")
 
-    console.print()
-    console.print("[bold red]Human review required[/bold red] - E-E-A-T Guardian sign-off before client delivery.")
-    console.print()
+    console.print("\n[bold red]Human review required[/bold red] — E-E-A-T Guardian sign-off before client delivery.")
 
 
 if __name__ == "__main__":
