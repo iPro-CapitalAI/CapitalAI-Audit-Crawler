@@ -859,15 +859,30 @@ def status():
 if __name__ == "__main__":
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     init_db()
+
+    # ── SSL: look for mkcert files in the repo root ──
+    cert_file = Path(__file__).parent / "100.80.40.84.pem"
+    key_file  = Path(__file__).parent / "100.80.40.84-key.pem"
+    ssl_ctx   = None
+    protocol  = "http"
+
+    if cert_file.exists() and key_file.exists():
+        ssl_ctx  = (str(cert_file), str(key_file))
+        protocol = "https"
+        print("SSL: certificates found — running HTTPS")
+    else:
+        print("SSL: no certificates found — running HTTP")
+        print(f"     To enable HTTPS: run mkcert {HOST} in the repo folder")
+
     print(f"""
 ╔══════════════════════════════════════════════╗
 ║       Capital AI — Audit Control Panel       ║
 ╠══════════════════════════════════════════════╣
-║  Local:      http://localhost:{PORT}           ║
-║  Tailscale:  http://<tailscale-ip>:{PORT}      ║
+║  Local:      {protocol}://localhost:{PORT}           ║
+║  Tailscale:  {protocol}://<tailscale-ip>:{PORT}      ║
 ║                                              ║
 ║  Find your Tailscale IP:  tailscale ip -4    ║
 ║  Password:   capitalai2026                   ║
 ╚══════════════════════════════════════════════╝
 """)
-    app.run(host=HOST, port=PORT, debug=False, threaded=True)
+    app.run(host=HOST, port=PORT, debug=False, threaded=True, ssl_context=ssl_ctx)
